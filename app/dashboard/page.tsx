@@ -14,6 +14,8 @@ import {
 import { db } from "../lib/firebase";
 import { useAuth } from "../context/AuthContext";
 import { useRouter } from "next/navigation";
+import Link from "next/link";
+import PrivacyConsentModal from "../components/PrivacyConsentModal";
 
 import { GoogleMap, Marker, useLoadScript } from "@react-google-maps/api";
 
@@ -182,10 +184,22 @@ export default function DashboardPage() {
         {/* CONTACTS */}
         <div className="bg-zinc-900 border border-zinc-800 rounded">
           <div className="p-4 border-b border-zinc-800">
-            <h2 className="font-semibold text-sm uppercase">
-              Emergency Contacts
-            </h2>
+
+            <div className="flex items-center justify-between mb-4">
+              <h2 className="font-semibold text-sm uppercase">
+                Emergency Contacts
+              </h2>
+
+              {/* This button links to the page we just converted! */}
+              <Link 
+                href="/add-contact" 
+                className="bg-black text-white px-4 py-2 rounded-lg font-bold hover:bg-gray-800 transition"
+              >
+                + Add Contact
+              </Link>
+            </div>
           </div>
+        </div>
 
           {contacts.length === 0 && (
             <p className="p-4 text-gray-400 text-sm">No contacts yet.</p>
@@ -231,7 +245,8 @@ export default function DashboardPage() {
         </div>
 
         <div className="h-10" />
+
+        {/*<PrivacyConsentModal />*/}
       </div>
-    </div>
   );
 }
