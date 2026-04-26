@@ -1,20 +1,66 @@
 import { NextResponse } from "next/server";
-import { getUsers, createUser } from "@/controllers/userController";
+import { adminAuth, adminDb } from "../../lib/firebaseAdmin";
 
-// GET /api/users
-export async function GET(req) {
-  const result = await getUsers(req);
+export async function GET() {
+  try {
+    // 1. Fetch all users using Firebase Admin
+    const listUsersResult = await adminAuth.listUsers(1000);
+    
+    // 2. Loop through the users and grab their "name" from Firestore
+    const users = await Promise.all(
+      listUsersResult.users.map(async (user) => {
+        let firestoreName = "No Name";
+        
+        try {
+          // Look up the specific user document in the "users" collection
+          const userDoc = await adminDb.collection("users").doc(user.uid).get();
+          
+          if (userDoc.exists) {
+            // Grab the "name" field from your Firestore document
+            firestoreName = userDoc.data().name || "No Name";
+          }
+        } catch (err) {
+          console.error(`Failed to fetch firestore doc for ${user.uid}`, err);
+        }
 
-  return NextResponse.json(result.data, {
-    status: result.status
-  });
+        return {
+          uid: user.uid,
+          email: user.email,
+          displayName: firestoreName, // Now we use the Firestore name!
+          creationTime: user.metadata.creationTime,
+        };
+      })
+    );
+
+    // 3. Send the updated data back to the dashboard
+    return NextResponse.json({ users }, { status: 200 });
+
+  } catch (error) {
+    console.error("Error fetching users:", error);
+    return NextResponse.json({ error: "Failed to fetch users" }, { status: 500 });
+  }
 }
 
-// POST /api/users
-export async function POST(req) {
-  const result = await createUser(req);
+export async function DELETE(request) {
+  try {
+    // 1. Get the ID of the user we want to delete from the request body
+    const { userId } = await request.json();
 
-  return NextResponse.json(result.data, {
-    status: result.status
-  });
+    if (!userId) {
+      return NextResponse.json({ error: "Missing user ID" }, { status: 400 });
+    }
+
+    // 2. Delete the user from Firebase Authentication (Logins)
+    await adminAuth.deleteUser(userId);
+
+    // 3. Delete the user's document from Firestore (Database)
+    await adminDb.collection("users").doc(userId).delete();
+
+    console.log(`🔥 SUCCESS: Deleted user ${userId}`);
+    return NextResponse.json({ message: "User completely deleted" }, { status: 200 });
+    
+  } catch (error) {
+    console.error("🔥 API CRASH REASON (DELETE):", error);
+    return NextResponse.json({ error: "Failed to delete user" }, { status: 500 });
+  }
 }
